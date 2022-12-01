@@ -42,7 +42,6 @@ if not assigned(Socket) then begin
     Socket.Port:=49200;
     Socket.Active := True;
     Socket.OnConnect:=SocketConnect;
-    Socket.OnDisconnect:=SocketDisconnect;
   end else begin
     Socket.Active:=false;
     Socket.Free;
@@ -82,6 +81,7 @@ DataTimer:=TTimer.Create(MainForm);
 DataTimer.OnTimer:=SendBtnClick;
 DataTimer.Interval:=50;
 DataTimer.Enabled:=true;
+MainForm.Socket.OnDisconnect:=SocketDisconnect;
 end;
 
 procedure TMainForm.SocketDisconnect(Sender: TObject; Socket: TCustomWinSocket);

@@ -1,7 +1,7 @@
 object MainForm: TMainForm
   Left = 0
   Top = 0
-  BorderStyle = bsSingle
+  BorderStyle = bsDialog
   Caption = 'TestTask Client'
   ClientHeight = 133
   ClientWidth = 212
