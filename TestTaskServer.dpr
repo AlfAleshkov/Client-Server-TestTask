@@ -90,8 +90,6 @@ var
   incomingData:string;
   Data: array[0..10000] of AnsiChar;
   NumRead:Integer;
-  Buffer, Received_text: string;
-  Len:Integer;
 begin
   inherited FreeOnTerminate := true;
   try
@@ -148,12 +146,12 @@ begin
 ReportMemoryLeaksOnShutdown:=true;
   try
     WriteLn('TestTask Server program');
-    MainThread:=TMainThread.Create(false);
-    cs:=TCriticalSection.Create;
-    DB := TSQLite3Database.Create;
-    DB.Open('TestTask.db');
-    DB.Execute('CREATE TABLE TestTask (id INTEGER, data TEXT)');
     try
+      MainThread:=TMainThread.Create(false);
+      cs:=TCriticalSection.Create;
+      DB := TSQLite3Database.Create;
+      DB.Open('TestTask.db');
+      DB.Execute('CREATE TABLE TestTask (id INTEGER, data TEXT)');
       ReadLn;
     finally
       FreeAndNil(MainThread);
