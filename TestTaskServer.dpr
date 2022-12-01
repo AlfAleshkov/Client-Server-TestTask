@@ -9,7 +9,7 @@ uses
   Winapi.Windows, System.SysUtils,  System.Classes, System.Win.ScktComp,
   SyncObjs, // For Critical sections, to avoid race conditions of "WriteLn"
   EncdDecd, // Base64 encode/decode builtin unit
-  SQLite3, SQLite3Wrap;
+  SQLite3, SQLite3Wrap; // SQLite3 as DataBase
 
 type
   EServerThread = class(Exception);
@@ -106,19 +106,19 @@ begin
           if ClientSocket.ReceiveLength = 0 then begin
             incomingData:=DecodeString(incomingData);
             cs.Enter;
-            WriteLn('Data recieved. Id:'+IntToStr(ClientSocket.SocketHandle)+' Length:'+IntToStr(Length(incomingData)));
-            WriteLn(Copy(incomingData,1,40)+'...'); //first 40 chars of incomming data
-            //IBQuery1.SQL.Clear;
-            //IBQuery1.SQL.Add('INSERT INTO TestTaskTable(client_id,data) VALUES ('+IntToStr(ClientSocket.SocketHandle)',"'+incomingData+'")')
-            //IBQuery1.ExecSQL;
-            Stmt := DB.Prepare('INSERT INTO TestTask (id, data) VALUES (?, ?)');
-            try
-              Stmt.BindInt(1,ClientSocket.SocketHandle);
-              Stmt.BindText(2,incomingData);
-              Stmt.StepAndReset;
-            finally
-              Stmt.Free;
-            end;
+              WriteLn('Data recieved. Id:'+IntToStr(ClientSocket.SocketHandle)+' Length:'+IntToStr(Length(incomingData)));
+              WriteLn(Copy(incomingData,1,40)+'...'); //first 40 chars of incomming data
+              //IBQuery1.SQL.Clear;
+              //IBQuery1.SQL.Add('INSERT INTO TestTaskTable(client_id,data) VALUES ('+IntToStr(ClientSocket.SocketHandle)',"'+incomingData+'")')
+              //IBQuery1.ExecSQL;
+              Stmt := DB.Prepare('INSERT INTO TestTask (id, data) VALUES (?, ?)');
+              try
+                Stmt.BindInt(1,ClientSocket.SocketHandle);
+                Stmt.BindText(2,incomingData);
+                Stmt.StepAndReset;
+              finally
+                Stmt.Free;
+              end;
             cs.Leave;
             incomingData:='';
             end;
@@ -151,6 +151,7 @@ ReportMemoryLeaksOnShutdown:=true;
     MainThread:=TMainThread.Create(false);
     cs:=TCriticalSection.Create;
     DB := TSQLite3Database.Create;
+    DB.Open('TestTask.db');
     DB.Execute('CREATE TABLE TestTask (id INTEGER, data TEXT)');
     try
       ReadLn;
