@@ -150,6 +150,7 @@ ReportMemoryLeaksOnShutdown:=true;
       MainThread:=TMainThread.Create(false);
       cs:=TCriticalSection.Create;
       DB := TSQLite3Database.Create;
+      DeleteFile('TestTask.db');
       DB.Open('TestTask.db');
       DB.Execute('CREATE TABLE TestTask (id INTEGER, data TEXT)');
       ReadLn;
