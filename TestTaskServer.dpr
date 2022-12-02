@@ -77,9 +77,6 @@ end;
 procedure TMainThread.fSocketGetThread(Sender: TObject;
   ClientSocket: TServerClientWinSocket; var SocketThread: TServerClientThread);
 begin
-  cs.Enter;
-  WriteLn('Client connect. Id:'+IntToStr(ClientSocket.SocketHandle));
-  cs.Leave;
   SocketThread := TServerThread.Create( false, ClientSocket );
 end;
 
@@ -87,25 +84,31 @@ end;
 
 procedure TServerThread.ClientExecute;
 var
-  incomingData:string;
-  Data: array[0..10000] of AnsiChar;
-  NumRead:Integer;
+  incomingData: ansistring;
+  Data: array[1..15000] of AnsiChar; // Base64 expands by 1/3 source packet
+  NumRead,Len:Integer;
 begin
   inherited FreeOnTerminate := true;
+  cs.Enter;  // Critical section, Message about client connection
+  WriteLn('Client connect. Id:'+IntToStr(ClientSocket.SocketHandle));
+  cs.Leave;
   try
     fSocketStream := TWinSocketStream.Create( ClientSocket, 30000 );
+    incomingData:='';
     try
       while ( not Terminated ) and ClientSocket.Connected do
         try
           if not fSocketStream.WaitForData(5000) then Continue;
           NumRead := fSocketStream.Read(Data, SizeOf(Data));
           if NumRead = 0 then Exit;
-          incomingData:=incomingData+Copy(Data,0,NumRead);
-          if ClientSocket.ReceiveLength = 0 then begin
+          incomingData:=incomingData+Copy(Data,1,NumRead);
+          Len:=ClientSocket.ReceiveLength;
+          if (Len = 0)and(NumRead <> 2920) then begin
             incomingData:=DecodeString(incomingData);
-            cs.Enter;
+            cs.Enter; // Critical section, Message about recieved data
               WriteLn('Data recieved. Id:'+IntToStr(ClientSocket.SocketHandle)+' Length:'+IntToStr(Length(incomingData)));
               WriteLn(Copy(incomingData,1,40)+'...'); //first 40 chars of incomming data
+              // Database section, if future need to separate in independent class or method
               //IBQuery1.SQL.Clear;
               //IBQuery1.SQL.Add('INSERT INTO TestTaskTable(client_id,data) VALUES ('+IntToStr(ClientSocket.SocketHandle)',"'+incomingData+'")')
               //IBQuery1.ExecSQL;
@@ -129,7 +132,7 @@ begin
         end;
     finally
       fSocketStream.Free;
-      cs.Enter;
+      cs.Enter;  // Critical section, Message about client disconnection
       WriteLn('Client disconnect. Id:'+IntToStr(ClientSocket.SocketHandle));
       cs.Leave;
     end;
@@ -143,7 +146,10 @@ begin
 end;
 
 begin
+//Debug option to looking for memory leaks
+//Need to remove in final release
 ReportMemoryLeaksOnShutdown:=true;
+
   try
     WriteLn('TestTask Server program');
     try

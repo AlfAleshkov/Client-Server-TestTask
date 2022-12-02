@@ -68,9 +68,14 @@ SendBtn.Enabled:=false;
 end;
 
 procedure TMainForm.SendBtnClick(Sender: TObject);
+var
+  NumWrite:Integer;
 begin
-if Assigned(Socket) and Socket.Socket.Connected then
-  Socket.Socket.SendText(EncodeString(Copy( RandomData,1,Random(9001)+1000 )));
+if Assigned(Socket) and Socket.Socket.Connected then begin
+  NumWrite:=Random(9001)+1000;
+  Socket.Socket.SendText(EncodeString(Copy( RandomData,1,NumWrite )));
+  SendBtn.Caption:='Sended '+IntToStr(NumWrite)+' bytes';
+  end;
 end;
 
 procedure TMainForm.SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
