@@ -42,6 +42,7 @@ if not assigned(Socket) then begin
     Socket.Port:=49200;
     Socket.Active := True;
     Socket.OnConnect:=SocketConnect;
+    Socket.ClientType
   end else begin
     Socket.Active:=false;
     Socket.Free;
@@ -69,12 +70,12 @@ end;
 
 procedure TMainForm.SendBtnClick(Sender: TObject);
 var
-  NumWrite:Integer;
+  NumWrite,sended:Integer;
 begin
 if Assigned(Socket) and Socket.Socket.Connected then begin
   NumWrite:=Random(9001)+1000;
-  Socket.Socket.SendText(EncodeString(Copy( RandomData,1,NumWrite )));
-  SendBtn.Caption:='Sended '+IntToStr(NumWrite)+' bytes';
+  sended:=Socket.Socket.SendText(EncodeString(Copy( RandomData,1,NumWrite ))+'ENDOFDATA');
+  SendBtn.Caption:='Sended '+IntToStr(sended)+' bytes of '+IntToStr(NumWrite);
   end;
 end;
 
@@ -82,6 +83,7 @@ procedure TMainForm.SocketConnect(Sender: TObject; Socket: TCustomWinSocket);
 begin
 ConnectBtn.Caption:='Disconnect';
 SendBtn.Enabled:=true;
+Socket.SendText( EncodeString('Client socket start')+'ENDOFDATA' );
 DataTimer:=TTimer.Create(MainForm);
 DataTimer.OnTimer:=SendBtnClick;
 DataTimer.Interval:=50;

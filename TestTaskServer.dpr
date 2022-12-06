@@ -7,9 +7,10 @@ uses
   WinUtils, libc,
 {$ENDIF}
   Winapi.Windows, System.SysUtils,  System.Classes, System.Win.ScktComp,
-  SyncObjs, // For Critical sections, to avoid race conditions of "WriteLn"
-  EncdDecd, // Base64 encode/decode builtin unit
-  SQLite3, SQLite3Wrap; // SQLite3 as DataBase
+  System.StrUtils,        // Unit for work with strings, EndsStr and LeftStr
+  SyncObjs,               // For Critical sections, to avoid race conditions of "WriteLn"
+  EncdDecd,               // Base64 encode/decode builtin unit
+  SQLite3, SQLite3Wrap;   // SQLite3 as DataBase
 
 type
   EServerThread = class(Exception);
@@ -84,7 +85,7 @@ end;
 
 procedure TServerThread.ClientExecute;
 var
-  incomingData: ansistring;
+  incomingData,DecodedData: ansistring;
   Data: array[1..15000] of AnsiChar; // Base64 expands by 1/3 source packet
   NumRead,Len:Integer;
 begin
@@ -102,30 +103,36 @@ begin
           NumRead := fSocketStream.Read(Data, SizeOf(Data));
           if NumRead = 0 then Exit;
           incomingData:=incomingData+Copy(Data,1,NumRead);
-          Len:=ClientSocket.ReceiveLength;
-          if (Len = 0)and(NumRead <> 2920) then begin
-            incomingData:=DecodeString(incomingData);
-            cs.Enter; // Critical section, Message about recieved data
-              WriteLn('Data recieved. Id:'+IntToStr(ClientSocket.SocketHandle)+' Length:'+IntToStr(Length(incomingData)));
-              WriteLn(Copy(incomingData,1,40)+'...'); //first 40 chars of incomming data
-              // Database section, if future need to separate in independent class or method
-              //IBQuery1.SQL.Clear;
-              //IBQuery1.SQL.Add('INSERT INTO TestTaskTable(client_id,data) VALUES ('+IntToStr(ClientSocket.SocketHandle)',"'+incomingData+'")')
-              //IBQuery1.ExecSQL;
-              Stmt := DB.Prepare('INSERT INTO TestTask (id, data) VALUES (?, ?)');
-              try
-                Stmt.BindInt(1,ClientSocket.SocketHandle);
-                Stmt.BindText(2,incomingData);
-                Stmt.StepAndReset;
-              finally
-                Stmt.Free;
+          if (ClientSocket.ReceiveLength = 0)and(EndsStr('ENDOFDATA',incomingData)) then begin
+            Len:=Length(incomingData);
+            try
+              DecodedData:=DecodeString(LeftStr(incomingData,Len-9));
+            except
+              DecodedData:='';
+            end;
+            if DecodedData <> '' then begin
+              cs.Enter; // Critical section, Message about recieved data
+                WriteLn('Data recieved. Id:'+IntToStr(ClientSocket.SocketHandle)+' Length:'+IntToStr(Length(DecodedData))+'/'+IntToStr(Len));
+                WriteLn(Copy(DecodedData,1,40)+'...'); //first 40 chars of incomming data
+                // Database section, if future need to separate in independent class or method
+                Stmt := DB.Prepare('INSERT INTO TestTask (id, data) VALUES (?, ?)');
+                try
+                  Stmt.BindInt(1,ClientSocket.SocketHandle);
+                  Stmt.BindText(2,DecodedData);
+                  Stmt.StepAndReset;
+                finally
+                  Stmt.Free;
+                end;
+              cs.Leave;
+              incomingData:='';
               end;
-            cs.Leave;
-            incomingData:='';
             end;
         except
           on e:exception do
           begin
+            cs.Enter;
+            WriteLn('Err: '+e.Message);
+            cs.Leave;
             ClientSocket.Close;
             Terminate;
           end;
