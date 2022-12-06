@@ -42,7 +42,6 @@ if not assigned(Socket) then begin
     Socket.Port:=49200;
     Socket.Active := True;
     Socket.OnConnect:=SocketConnect;
-    Socket.ClientType
   end else begin
     Socket.Active:=false;
     Socket.Free;
